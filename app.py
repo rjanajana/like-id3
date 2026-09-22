@@ -168,14 +168,15 @@ def get_url(server_name, endpoint):
 # HTTP HEADERS
 # ─────────────────────────────────────────
 _HEADERS_BASE = {
-    'User-Agent':      "Dalvik/2.1.0 (Linux; U; Android 9; ASUS_Z01QD Build/PI)",
-    'Connection':      "Keep-Alive",
-    'Accept-Encoding': "gzip",
+    'Accept':          "*/*",
+    'Accept-Encoding': "deflate, gzip",
     'Content-Type':    "application/x-www-form-urlencoded",
-    'Expect':          "100-continue",
-    'X-Unity-Version': "2018.4.11f1",
+    'ReleaseVersion':  "OB55",
+    'User-Agent':      "UnityPlayer/2018.4.12f1 (UnityWebRequest/1.0, libcurl/8.5.0-DEV)",
     'X-GA':            "v1 1",
-    'ReleaseVersion':  "OB54"
+    'X-GA-SV':         "1789920295",
+    'X-Unity-Version': "2018.4.12f1",
+    'Connection':      "Keep-Alive"
 }
 
 def _make_headers(token):
@@ -198,7 +199,11 @@ async def _send_one(session, semaphore, edata, token, url, token_idx):
                     headers=_make_headers(token),
                     timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
                 ) as resp:
+                    body = await resp.read()
                     if resp.status == 200:
+                        # Server responds with 0xAB (hex 'ab' / RESPONCE FORMET AB) on successful like
+                        if body in (b'\xab', b'AB') or body.hex().upper() == 'AB' or not body:
+                            return (token_idx, "ok")
                         return (token_idx, "ok")
                     else:
                         result = f"http_{resp.status}"
