@@ -39,8 +39,12 @@ def _server_key(server_name):
     else:
         return "BD"
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 def _token_file(key):
-    return {"IND": "token_ind.json", "BR": "token_br.json", "BD": "token_bd.json"}.get(key)
+    mapping = {"IND": "token_ind.json", "BR": "token_br.json", "BD": "token_bd.json"}
+    fname = mapping.get(key)
+    return os.path.join(BASE_DIR, fname) if fname else None
 
 def load_tokens(server_name):
     key = _server_key(server_name)
@@ -61,6 +65,13 @@ def load_tokens(server_name):
                 if not data:
                     app.logger.error(f"Token file empty: {fname}")
                     return None
+                
+                for item in data:
+                    if isinstance(item, dict) and "token" in item:
+                        tok = item["token"]
+                        parts = tok.split('.')
+                        if len(parts) == 3 and len(parts[2]) == 44:
+                            item["token"] = f"{parts[0]}.{parts[1]}.{parts[2][:43]}"
                 
                 _token_cache[key] = data
                 _token_mtime[key] = current_mtime
@@ -129,7 +140,7 @@ def create_protobuf(uid):
     try:
         msg         = uid_generator_pb2.uid_generator()
         msg.saturn_ = int(uid)
-        msg.garena  = 1
+        msg.garena  = 7
         return msg.SerializeToString()
     except Exception as e:
         app.logger.error(f"UID protobuf error: {e}")
